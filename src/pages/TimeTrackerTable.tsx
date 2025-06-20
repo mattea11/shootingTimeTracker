@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { ChevronLeft, ChevronRight, Plus, Download, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,7 +26,9 @@ interface TimeData {
 
 const password = import.meta.env.VITE_PASSWORD;
 
-export default function Component() {
+export default function TimeTrackerTable() {
+    const navigate = useNavigate()
+
     const [currentRound, setCurrentRound] = useState(1)
     const [users, setUsers] = useState<string[]>([])
     const [newUserName, setNewUserName] = useState("")
@@ -266,6 +269,15 @@ export default function Component() {
     //     }
     // }
 
+    const handleShowResults = () => {
+  // Save data to localStorage
+  localStorage.setItem("shootingUsers", JSON.stringify(users))
+  localStorage.setItem("shootingTimeData", JSON.stringify(timeData))
+  
+  // Navigate to results page
+  navigate("/shootingResults")
+}
+
     return (
         <div className="min-h-full pt-4">
             <div className="max-w-md mx-auto">
@@ -399,7 +411,7 @@ export default function Component() {
                 {/* Action Buttons */}
                 <div className="space-y-3">
                     {users.length > 0 && (
-                        <Button className="w-full h-12 text-base" variant="default">
+                        <Button className="w-full h-12 text-base" variant="default" onClick={handleShowResults}>
                             <BarChart3 className="mr-2 h-5 w-5" />
                             Show Results
                         </Button>
