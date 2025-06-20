@@ -2,9 +2,18 @@
 
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, Download } from "lucide-react"
+import { ArrowLeft, Download, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 
 interface TimeData {
   [userId: string]: {
@@ -24,6 +33,12 @@ interface UserRanking {
 
 export default function ShootingResults() {
   const navigate = useNavigate()
+
+  const password = import.meta.env.VITE_PASSWORD;
+
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  const [passwordInput, setPasswordInput] = useState("")
+  const [passwordError, setPasswordError] = useState(false)
   const [users, setUsers] = useState<string[]>([])
   const [timeData, setTimeData] = useState<TimeData>({})
 
@@ -46,12 +61,12 @@ export default function ShootingResults() {
 
   const getAllValidTimesForRound = (userId: string, round: number): number[] => {
     const times: number[] = []
-    ;["time1", "time2", "time3"].forEach((timeSlot) => {
-      const time = getTimeTotal(userId, round, timeSlot as "time1" | "time2" | "time3")
-      if (time !== undefined && !isNaN(time)) {
-        times.push(time)
-      }
-    })
+      ;["time1", "time2", "time3"].forEach((timeSlot) => {
+        const time = getTimeTotal(userId, round, timeSlot as "time1" | "time2" | "time3")
+        if (time !== undefined && !isNaN(time)) {
+          times.push(time)
+        }
+      })
     return times
   }
 
@@ -92,7 +107,7 @@ export default function ShootingResults() {
           allTimes.push(...roundTimes)
         }
 
-        const averageTime = allTimes.length > 0 ? 
+        const averageTime = allTimes.length > 0 ?
           allTimes.reduce((sum, time) => sum + time, 0) / allTimes.length : 0
 
         return {
@@ -126,7 +141,7 @@ export default function ShootingResults() {
       .sort((a, b) => a.time - b.time)
   }
 
-const exportToCSV = () => {
+  const exportToCSV = () => {
     // Get all rankings
     const steelRanking = getSteelShootingRanking();
     const averageRanking = getAverageRanking();
@@ -139,40 +154,40 @@ const exportToCSV = () => {
     csv += "Raw Time Data\n";
     csv += "User,";
     for (let round = 1; round <= 20; round++) {
-        csv += `Round ${round} Time1,Round ${round} Time2,Round ${round} Time3,`;
+      csv += `Round ${round} Time1,Round ${round} Time2,Round ${round} Time3,`;
     }
     csv = csv.slice(0, -1) + "\n";
 
     users.forEach((user) => {
-        csv += `${user},`;
-        for (let round = 1; round <= 20; round++) {
-            const time1 = getTimeTotal(user, round, "time1") || "";
-            const time2 = getTimeTotal(user, round, "time2") || "";
-            const time3 = getTimeTotal(user, round, "time3") || "";
-            csv += `${time1},${time2},${time3},`;
-        }
-        csv = csv.slice(0, -1) + "\n";
+      csv += `${user},`;
+      for (let round = 1; round <= 20; round++) {
+        const time1 = getTimeTotal(user, round, "time1") || "";
+        const time2 = getTimeTotal(user, round, "time2") || "";
+        const time3 = getTimeTotal(user, round, "time3") || "";
+        csv += `${time1},${time2},${time3},`;
+      }
+      csv = csv.slice(0, -1) + "\n";
     });
 
     // 2. Steel Shooting Ranking
     csv += "\nSteel Shooting Ranking\n";
     csv += "Rank,Username,Total Time\n";
     steelRanking.forEach((user, index) => {
-        csv += `${index + 1},${user.username},${user.displayTime}\n`;
+      csv += `${index + 1},${user.username},${user.displayTime}\n`;
     });
 
     // 3. Average Ranking
     csv += "\nAverage Time Ranking\n";
     csv += "Rank,Username,Average Time\n";
     averageRanking.forEach((user, index) => {
-        csv += `${index + 1},${user.username},${user.displayTime}\n`;
+      csv += `${index + 1},${user.username},${user.displayTime}\n`;
     });
 
     // 4. Best Time Ranking
     csv += "\nBest Time Ranking\n";
     csv += "Rank,Username,Best Time\n";
     bestTimeRanking.forEach((user, index) => {
-        csv += `${index + 1},${user.username},${user.displayTime}\n`;
+      csv += `${index + 1},${user.username},${user.displayTime}\n`;
     });
 
     // Create and download the CSV file
@@ -183,7 +198,30 @@ const exportToCSV = () => {
     a.download = "shooting-results.csv";
     a.click();
     window.URL.revokeObjectURL(url);
-};
+  };
+
+  const clearAllData = () => {
+    localStorage.removeItem("shootingUsers")
+    localStorage.removeItem("shootingTimeData")
+    localStorage.removeItem("currentRound")
+
+    setUsers([])
+    setTimeData({})
+    navigate("/") // Optional: redirect back to main page
+  }
+
+  const verifyPassword = () => {
+    if (passwordInput === password) {
+      exportToCSV()
+      clearAllData()
+      setPasswordDialogOpen(false)
+      setPasswordInput("")
+      setPasswordError(false)
+    } else {
+      setPasswordError(true)
+    }
+  }
+
 
   const RankingTable = ({ title, rankings }: { title: string; rankings: UserRanking[] }) => (
     <Card className="mb-4">
@@ -245,11 +283,49 @@ const exportToCSV = () => {
 
         <RankingTable title="Best Time" rankings={bestTimeRanking} />
 
-        <Button onClick={exportToCSV} className="w-full h-12 text-base" variant="outline">
-          <Download className="mr-2 h-5 w-5" />
-          Export to CSV
+        <div className="mb-4">
+          <Button onClick={exportToCSV} className="w-full h-12 text-base" variant="outline">
+            <Download className="mr-2 h-5 w-5" />
+            Export to CSV
+          </Button>
+        </div>
+
+        <Button
+          onClick={() => setPasswordDialogOpen(true)}
+          className="w-full h-12 text-base"
+          variant="destructive"
+        >
+          <Trash2 className="mr-2 h-5 w-5" />
+          Clear All Data
         </Button>
       </div>
+      {/* Password Dialog */}
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enter password to export and clear all data</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to clear all data? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              type="password"
+              id="passwordInput"
+              placeholder="Password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && verifyPassword()}
+            />
+            {passwordError && (
+              <p className="text-sm text-red-500">Incorrect password</p>
+            )}
+            <Button onClick={verifyPassword} className="w-full">
+              Submit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

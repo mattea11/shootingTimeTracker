@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog"
 
 interface TimeData {
-   [userId: string]: {
+    [userId: string]: {
         [round: number]: {
             time1: { input: string; total?: number; isEditable: boolean }
             time2: { input: string; total?: number; isEditable: boolean }
@@ -138,7 +138,7 @@ export default function TimeTrackerTable() {
                         }
                     }
                 }));
-                
+
                 setActiveInput(pendingEdit)
                 setPasswordDialogOpen(false)
                 setPasswordInput("")
@@ -317,19 +317,6 @@ export default function TimeTrackerTable() {
         setEditUserName("")
     }
 
-    const clearAllData = () => {
-    if (confirm("Are you sure you want to clear all data? This cannot be undone.")) {
-        localStorage.removeItem("shootingUsers")
-        localStorage.removeItem("shootingTimeData")
-        localStorage.removeItem("currentRound")
-
-        setUsers([])
-        setTimeData({})
-        setCurrentRound(1)
-        setNewUserName("")
-    }
-}
-
     return (
         <div className="min-h-full pt-4">
             <div className="max-w-md mx-auto">
@@ -383,7 +370,7 @@ export default function TimeTrackerTable() {
                             </div>
                         </div>
                         <DialogFooter className="flex gap-2">
-                            
+
                             <Button variant="outline" onClick={closeUserDialog}>
                                 <X className="h-4 w-4"></X>
                                 Cancel
@@ -502,9 +489,9 @@ export default function TimeTrackerTable() {
                                                     onKeyPress={(e) => e.key === "Enter" && addUser()}
                                                     aria-label="New shooter name input"
                                                 />
-                                                <Button 
-                                                    size="sm" 
-                                                    onClick={addUser} 
+                                                <Button
+                                                    size="sm"
+                                                    onClick={addUser}
                                                     disabled={!newUserName.trim()}
                                                     aria-label="Add new shooter"
                                                 >
@@ -523,36 +510,17 @@ export default function TimeTrackerTable() {
                 <div className="space-y-3">
                     {users.length > 0 && (
                         <>
-                        <Button 
-                            className="w-full h-12 text-base" 
-                            variant="default" 
-                            onClick={handleShowResults}
-                            aria-label="Show results"
-                        >
-                            <BarChart3 className="mr-2 h-5 w-5" />
-                            Show Results
-                        </Button>
-                        
-                        <Button 
-                            onClick={exportToCSV} 
-                            className="w-full h-12 text-base" 
-                            variant="outline"
-                            aria-label="Export to CSV"
-                        >
-                            <Download className="mr-2 h-5 w-5" />
-                            Export to CSV
-                        </Button>
+                            <Button
+                                className="w-full h-12 text-base"
+                                variant="default"
+                                onClick={handleShowResults}
+                                aria-label="Show results"
+                            >
+                                <BarChart3 className="mr-2 h-5 w-5" />
+                                Show Results
+                            </Button>
 
-                         <Button 
-                            onClick={clearAllData} 
-                            className="w-full h-12 text-base" 
-                            variant="destructive"
-                            aria-label="Clear all data"
-                        >
-                            <Trash2 className="mr-2 h-5 w-5" />
-                            Clear All Data
-                        </Button>
-                    </>
+                        </>
                     )}
                 </div>
             </div>
