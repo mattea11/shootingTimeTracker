@@ -5,6 +5,13 @@ import { ChevronLeft, ChevronRight, Plus, Download, BarChart3 } from "lucide-rea
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog"
 
 interface TimeData {
     [userId: string]: {
@@ -16,6 +23,8 @@ interface TimeData {
     }
 }
 
+const password = import.meta.env.VITE_PASSWORD;
+
 export default function Component() {
     const [currentRound, setCurrentRound] = useState(1)
     const [users, setUsers] = useState<string[]>([])
@@ -23,6 +32,11 @@ export default function Component() {
     const [timeData, setTimeData] = useState<TimeData>({})
     const [showResults, setShowResults] = useState(false)
     const [activeInput, setActiveInput] = useState<{ userId: string, round: number, timeSlot: "time1" | "time2" | "time3" } | null>(null)
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+    const [passwordInput, setPasswordInput] = useState("")
+    const [passwordError, setPasswordError] = useState(false)
+    const [pendingEdit, setPendingEdit] = useState<{ userId: string, round: number, timeSlot: "time1" | "time2" | "time3" } | null>(null)
+    const [verifiedCells, setVerifiedCells] = useState<{ [key: string]: boolean }>({})
 
     const addUser = () => {
         if (newUserName.trim()) {
@@ -32,22 +46,18 @@ export default function Component() {
     }
 
     const isValidNumber = (str: string) => {
-        // Check if the string is a valid number (including decimals)
         return /^(\d+\.?\d*|\.\d+)$/.test(str)
     }
 
     const handleInputChange = (userId: string, round: number, timeSlot: "time1" | "time2" | "time3", value: string) => {
-        // Only allow numbers, decimal points, and + characters
         const filteredValue = value.replace(/[^0-9.+]/g, '')
 
-        // Prevent consecutive decimal points or + signs
         let newValue = filteredValue
-            .replace(/\.+/g, '.') // Replace multiple dots with single dot
-            .replace(/\++/g, '+') // Replace multiple + with single +
-            .replace(/^\+/, '')    // Remove leading +
-            .replace(/\.$/, '')    // Remove trailing dot (temporarily)
+            .replace(/\.+/g, '.')
+            .replace(/\++/g, '+')
+            .replace(/^\+/, '')
+            .replace(/\.$/, '')
 
-        // Re-add trailing dot if it was part of the original input
         if (filteredValue.endsWith('.') && !filteredValue.endsWith('..')) {
             newValue += '.'
         }
@@ -65,6 +75,33 @@ export default function Component() {
                 },
             },
         }))
+    }
+
+    const handleInputFocus = (userId: string, round: number, timeSlot: "time1" | "time2" | "time3") => {
+        const currentValue = getTimeInput(userId, round, timeSlot)
+        const cellKey = `${userId}-${round}-${timeSlot}`;
+
+        if (currentValue && currentValue.trim() !== "" && !verifiedCells[cellKey]) {
+            setPendingEdit({ userId, round, timeSlot })
+            setPasswordDialogOpen(true)
+        } else {
+            setActiveInput({ userId, round, timeSlot })
+        }
+    }
+
+    const verifyPassword = () => {
+        if (passwordInput === password) {
+            if (pendingEdit) {
+                const cellKey = `${pendingEdit.userId}-${pendingEdit.round}-${pendingEdit.timeSlot}`;
+                setVerifiedCells(prev => ({ ...prev, [cellKey]: true }));
+                setActiveInput(pendingEdit)
+                setPasswordDialogOpen(false)
+                setPasswordInput("")
+                setPasswordError(false)
+            }
+        } else {
+            setPasswordError(true)
+        }
     }
 
     const calculateTotal = (userId: string, round: number, timeSlot: "time1" | "time2" | "time3") => {
@@ -97,7 +134,6 @@ export default function Component() {
                     },
                 }))
             } else {
-                // If invalid numbers, clear the total
                 setTimeData((prev) => ({
                     ...prev,
                     [userId]: {
@@ -113,7 +149,6 @@ export default function Component() {
                 }))
             }
         } else {
-            // If no +, just parse the single number
             if (isValidNumber(input)) {
                 const num = parseFloat(input)
                 setTimeData((prev) => ({
@@ -130,7 +165,6 @@ export default function Component() {
                     },
                 }))
             } else {
-                // Invalid single number
                 setTimeData((prev) => ({
                     ...prev,
                     [userId]: {
@@ -252,6 +286,33 @@ export default function Component() {
     return (
         <div className="min-h-full pt-4">
             <div className="max-w-md mx-auto">
+                {/* Password Dialog */}
+                <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Password Required</DialogTitle>
+                            <DialogDescription>
+                                Enter password to edit this field
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                            <Input
+                                type="password"
+                                placeholder="Password"
+                                value={passwordInput}
+                                onChange={(e) => setPasswordInput(e.target.value)}
+                                onKeyPress={(e) => e.key === "Enter" && verifyPassword()}
+                            />
+                            {passwordError && (
+                                <p className="text-sm text-red-500">Incorrect password</p>
+                            )}
+                            <Button onClick={verifyPassword} className="w-full">
+                                Submit
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+
                 {/* Header with Round Navigation */}
                 <Card className="mb-4">
                     <CardHeader className="pb-4">
@@ -306,11 +367,17 @@ export default function Component() {
                                                             className="text-center text-sm h-10"
                                                             value={getTimeInput(user, currentRound, timeSlot)}
                                                             onChange={(e) => handleInputChange(user, currentRound, timeSlot, e.target.value)}
-                                                            onFocus={() => setActiveInput({ userId: user, round: currentRound, timeSlot })}
+                                                            onFocus={() => handleInputFocus(user, currentRound, timeSlot)}
                                                             onBlur={() => {
                                                                 calculateTotal(user, currentRound, timeSlot)
                                                                 setActiveInput(null)
                                                             }}
+                                                            readOnly={!!(getTimeInput(user, currentRound, timeSlot) &&
+                                                                (!activeInput ||
+                                                                    activeInput.userId !== user ||
+                                                                    activeInput.round !== currentRound ||
+                                                                    activeInput.timeSlot !== timeSlot) &&
+                                                                !verifiedCells[`${user}-${currentRound}-${timeSlot}`])}
                                                         />
                                                         {activeInput?.userId !== user ||
                                                             activeInput?.round !== currentRound ||
