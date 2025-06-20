@@ -35,7 +35,7 @@ export default function Component() {
     const [passwordInput, setPasswordInput] = useState("")
     const [passwordError, setPasswordError] = useState(false)
     const [pendingEdit, setPendingEdit] = useState<{ userId: string, round: number, timeSlot: "time1" | "time2" | "time3" } | null>(null)
-    const [verifiedCells, setVerifiedCells] = useState<{ [key: string]: boolean }>({})
+    const [verifiedCells, _] = useState<{ [key: string]: boolean }>({})
 
     const addUser = () => {
         if (newUserName.trim()) {
@@ -241,30 +241,30 @@ export default function Component() {
         window.URL.revokeObjectURL(url)
     }
 
-    const calculateUserStats = (userId: string) => {
-        let totalTimes = 0
-        let timeCount = 0
-        let bestTime = Number.POSITIVE_INFINITY
+    // const calculateUserStats = (userId: string) => {
+    //     let totalTimes = 0
+    //     let timeCount = 0
+    //     let bestTime = Number.POSITIVE_INFINITY
 
-        for (let round = 1; round <= 20; round++) {
-            ;["time1", "time2", "time3"].forEach((timeSlot) => {
-                const time = getTimeTotal(userId, round, timeSlot as "time1" | "time2" | "time3")
-                if (time !== undefined && !isNaN(time)) {
-                    totalTimes += time
-                    timeCount++
-                    if (time < bestTime) {
-                        bestTime = time
-                    }
-                }
-            })
-        }
+    //     for (let round = 1; round <= 20; round++) {
+    //         ;["time1", "time2", "time3"].forEach((timeSlot) => {
+    //             const time = getTimeTotal(userId, round, timeSlot as "time1" | "time2" | "time3")
+    //             if (time !== undefined && !isNaN(time)) {
+    //                 totalTimes += time
+    //                 timeCount++
+    //                 if (time < bestTime) {
+    //                     bestTime = time
+    //                 }
+    //             }
+    //         })
+    //     }
 
-        return {
-            average: timeCount > 0 ? (totalTimes / timeCount).toFixed(2) : "N/A",
-            best: bestTime !== Number.POSITIVE_INFINITY ? bestTime.toFixed(2) : "N/A",
-            total: timeCount,
-        }
-    }
+    //     return {
+    //         average: timeCount > 0 ? (totalTimes / timeCount).toFixed(2) : "N/A",
+    //         best: bestTime !== Number.POSITIVE_INFINITY ? bestTime.toFixed(2) : "N/A",
+    //         total: timeCount,
+    //     }
+    // }
 
     return (
         <div className="min-h-full pt-4">
