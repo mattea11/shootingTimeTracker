@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { ChevronLeft, ChevronRight, Plus, Download, BarChart3 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Download, BarChart3, Trash2, Edit, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +12,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
+    DialogFooter,
 } from "@/components/ui/dialog"
 
 interface TimeData {
@@ -38,7 +39,10 @@ export default function TimeTrackerTable() {
     const [passwordInput, setPasswordInput] = useState("")
     const [passwordError, setPasswordError] = useState(false)
     const [pendingEdit, setPendingEdit] = useState<{ userId: string, round: number, timeSlot: "time1" | "time2" | "time3" } | null>(null)
-    const [verifiedCells, _] = useState<{ [key: string]: boolean }>({})
+    const [verifiedCells, _] = useState<{ [key: string]: boolean}>({})
+    const [editingUser, setEditingUser] = useState<string | null>(null)
+    const [editUserName, setEditUserName] = useState("")
+    const [showUserDialog, setShowUserDialog] = useState(false)
 
     const addUser = () => {
         if (newUserName.trim()) {
@@ -212,11 +216,6 @@ export default function TimeTrackerTable() {
         return timeData[userId]?.[round]?.[timeSlot]?.total
     }
 
-    // const isCellEditable = (userId: string, round: number, timeSlot: "time1" | "time2" | "time3") => {
-    //     const cell = timeData[userId]?.[round]?.[timeSlot];
-    //     return !cell?.input || cell.isEditable;
-    // }
-
     const exportToCSV = () => {
         let csv = "User,"
         for (let round = 1; round <= 20; round++) {
@@ -244,39 +243,62 @@ export default function TimeTrackerTable() {
         window.URL.revokeObjectURL(url)
     }
 
-    // const calculateUserStats = (userId: string) => {
-    //     let totalTimes = 0
-    //     let timeCount = 0
-    //     let bestTime = Number.POSITIVE_INFINITY
-
-    //     for (let round = 1; round <= 20; round++) {
-    //         ;["time1", "time2", "time3"].forEach((timeSlot) => {
-    //             const time = getTimeTotal(userId, round, timeSlot as "time1" | "time2" | "time3")
-    //             if (time !== undefined && !isNaN(time)) {
-    //                 totalTimes += time
-    //                 timeCount++
-    //                 if (time < bestTime) {
-    //                     bestTime = time
-    //                 }
-    //             }
-    //         })
-    //     }
-
-    //     return {
-    //         average: timeCount > 0 ? (totalTimes / timeCount).toFixed(2) : "N/A",
-    //         best: bestTime !== Number.POSITIVE_INFINITY ? bestTime.toFixed(2) : "N/A",
-    //         total: timeCount,
-    //     }
-    // }
-
     const handleShowResults = () => {
-  // Save data to localStorage
-  localStorage.setItem("shootingUsers", JSON.stringify(users))
-  localStorage.setItem("shootingTimeData", JSON.stringify(timeData))
-  
-  // Navigate to results page
-  navigate("/shootingResults")
-}
+        // Save data to localStorage
+        localStorage.setItem("shootingUsers", JSON.stringify(users))
+        localStorage.setItem("shootingTimeData", JSON.stringify(timeData))
+        
+        // Navigate to results page
+        navigate("/shootingResults")
+    }
+
+    // User management functions
+    const handleUserClick = (username: string) => {
+        setEditingUser(username)
+        setEditUserName(username)
+        setShowUserDialog(true)
+    }
+
+    const handleRenameUser = () => {
+        if (editingUser && editUserName.trim() && editUserName.trim() !== editingUser) {
+            // Update users array
+            const updatedUsers = users.map((user) => (user === editingUser ? editUserName.trim() : user))
+            setUsers(updatedUsers)
+
+            // Update timeData keys
+            const updatedTimeData = { ...timeData }
+            if (updatedTimeData[editingUser]) {
+                updatedTimeData[editUserName.trim()] = updatedTimeData[editingUser]
+                delete updatedTimeData[editingUser]
+                setTimeData(updatedTimeData)
+            }
+        }
+        setShowUserDialog(false)
+        setEditingUser(null)
+        setEditUserName("")
+    }
+
+    const handleDeleteUser = () => {
+        if (editingUser) {
+            // Remove user from users array
+            const updatedUsers = users.filter((user) => user !== editingUser)
+            setUsers(updatedUsers)
+
+            // Remove user's timeData
+            const updatedTimeData = { ...timeData }
+            delete updatedTimeData[editingUser]
+            setTimeData(updatedTimeData)
+        }
+        setShowUserDialog(false)
+        setEditingUser(null)
+        setEditUserName("")
+    }
+
+    const closeUserDialog = () => {
+        setShowUserDialog(false)
+        setEditingUser(null)
+        setEditUserName("")
+    }
 
     return (
         <div className="min-h-full pt-4">
@@ -305,6 +327,45 @@ export default function TimeTrackerTable() {
                                 Submit
                             </Button>
                         </div>
+                    </DialogContent>
+                </Dialog>
+
+                {/* User Edit Dialog */}
+                <Dialog open={showUserDialog} onOpenChange={closeUserDialog}>
+                    <DialogContent className="max-w-sm mx-auto">
+                        <DialogHeader>
+                            <DialogTitle>Edit Shooter</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                            <div>
+                                <label htmlFor="editUsername" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Shooter Name
+                                </label>
+                                <Input
+                                    id="editUsername"
+                                    value={editUserName}
+                                    onChange={(e) => setEditUserName(e.target.value)}
+                                    placeholder="Enter shooter name"
+                                    className="w-full"
+                                    onKeyPress={(e) => e.key === "Enter" && handleRenameUser()}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter className="flex gap-2">
+                            
+                            <Button variant="outline" onClick={closeUserDialog}>
+                                <X className="h-4 w-4" ></X>
+                                Cancel
+                            </Button><Button variant="destructive" onClick={handleDeleteUser} className="flex items-center gap-2">
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                            </Button>
+                            
+                            <Button onClick={handleRenameUser} disabled={!editUserName.trim()} className="flex items-center gap-2">
+                                <Edit className="h-4 w-4" />
+                                Save
+                            </Button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
 
@@ -352,7 +413,14 @@ export default function TimeTrackerTable() {
                                 <tbody>
                                     {users.map((user) => (
                                         <tr key={user} className="border-b">
-                                            <td className="p-3 font-medium">{user}</td>
+                                            <td className="p-3">
+                                                <button
+                                                    onClick={() => handleUserClick(user)}
+                                                    className="font-medium text-left hover:text-green-600 hover:font-bold transition-colors"
+                                                >
+                                                    {user}
+                                                </button>
+                                            </td>
                                             {(["time1", "time2", "time3"] as const).map((timeSlot) => (
                                                 <td key={timeSlot} className="p-2">
                                                     <div className="flex flex-col items-center">
