@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { ChevronLeft, ChevronRight, Plus, Download, BarChart3, Trash2, Edit, X } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, BarChart3, Trash2, Edit, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -237,33 +237,6 @@ export default function TimeTrackerTable() {
 
     const getTimeTotal = (userId: string, round: number, timeSlot: "time1" | "time2" | "time3") => {
         return timeData[userId]?.[round]?.[timeSlot]?.total
-    }
-
-    const exportToCSV = () => {
-        let csv = "User,"
-        for (let round = 1; round <= 20; round++) {
-            csv += `Round ${round} Time1,Round ${round} Time2,Round ${round} Time3,`
-        }
-        csv = csv.slice(0, -1) + "\n"
-
-        users.forEach((user) => {
-            csv += `${user},`
-            for (let round = 1; round <= 20; round++) {
-                const time1 = getTimeTotal(user, round, "time1") || ""
-                const time2 = getTimeTotal(user, round, "time2") || ""
-                const time3 = getTimeTotal(user, round, "time3") || ""
-                csv += `${time1},${time2},${time3},`
-            }
-            csv = csv.slice(0, -1) + "\n"
-        })
-
-        const blob = new Blob([csv], { type: "text/csv" })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = "shooting-times.csv"
-        a.click()
-        window.URL.revokeObjectURL(url)
     }
 
     const handleShowResults = () => {
