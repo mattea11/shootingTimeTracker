@@ -14,11 +14,11 @@ import {
 } from "@/components/ui/dialog"
 
 interface TimeData {
-    [userId: string]: {
+   [userId: string]: {
         [round: number]: {
-            time1: { input: string; total?: number }
-            time2: { input: string; total?: number }
-            time3: { input: string; total?: number }
+            time1: { input: string; total?: number; isEditable: boolean }
+            time2: { input: string; total?: number; isEditable: boolean }
+            time3: { input: string; total?: number; isEditable: boolean }
         }
     }
 }
@@ -30,7 +30,6 @@ export default function Component() {
     const [users, setUsers] = useState<string[]>([])
     const [newUserName, setNewUserName] = useState("")
     const [timeData, setTimeData] = useState<TimeData>({})
-    const [showResults, setShowResults] = useState(false)
     const [activeInput, setActiveInput] = useState<{ userId: string, round: number, timeSlot: "time1" | "time2" | "time3" } | null>(null)
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
     const [passwordInput, setPasswordInput] = useState("")
@@ -70,7 +69,8 @@ export default function Component() {
                     ...prev[userId]?.[round],
                     [timeSlot]: {
                         input: newValue,
-                        total: prev[userId]?.[round]?.[timeSlot]?.total
+                        total: prev[userId]?.[round]?.[timeSlot]?.total,
+                        isEditable: false
                     },
                 },
             },
@@ -78,10 +78,13 @@ export default function Component() {
     }
 
     const handleInputFocus = (userId: string, round: number, timeSlot: "time1" | "time2" | "time3") => {
-        const currentValue = getTimeInput(userId, round, timeSlot)
-        const cellKey = `${userId}-${round}-${timeSlot}`;
+        const currentCell = timeData[userId]?.[round]?.[timeSlot] || {
+            input: "",
+            total: undefined,
+            isEditable: true
+        };
 
-        if (currentValue && currentValue.trim() !== "" && !verifiedCells[cellKey]) {
+        if (currentCell.input && !currentCell.isEditable) {
             setPendingEdit({ userId, round, timeSlot })
             setPasswordDialogOpen(true)
         } else {
@@ -92,8 +95,20 @@ export default function Component() {
     const verifyPassword = () => {
         if (passwordInput === password) {
             if (pendingEdit) {
-                const cellKey = `${pendingEdit.userId}-${pendingEdit.round}-${pendingEdit.timeSlot}`;
-                setVerifiedCells(prev => ({ ...prev, [cellKey]: true }));
+                setTimeData(prev => ({
+                    ...prev,
+                    [pendingEdit.userId]: {
+                        ...prev[pendingEdit.userId] || {},
+                        [pendingEdit.round]: {
+                            ...prev[pendingEdit.userId]?.[pendingEdit.round] || {},
+                            [pendingEdit.timeSlot]: {
+                                ...prev[pendingEdit.userId]?.[pendingEdit.round]?.[pendingEdit.timeSlot] || { input: "", total: undefined },
+                                isEditable: true
+                            }
+                        }
+                    }
+                }));
+                
                 setActiveInput(pendingEdit)
                 setPasswordDialogOpen(false)
                 setPasswordInput("")
@@ -128,7 +143,8 @@ export default function Component() {
                             ...prev[userId]?.[round],
                             [timeSlot]: {
                                 input: input,
-                                total: total
+                                total: total,
+                                isEditable: false
                             },
                         },
                     },
@@ -142,7 +158,8 @@ export default function Component() {
                             ...prev[userId]?.[round],
                             [timeSlot]: {
                                 input: input,
-                                total: undefined
+                                total: undefined,
+                                isEditable: false
                             },
                         },
                     },
@@ -159,7 +176,8 @@ export default function Component() {
                             ...prev[userId]?.[round],
                             [timeSlot]: {
                                 input: input,
-                                total: num
+                                total: num,
+                                isEditable: false
                             },
                         },
                     },
@@ -173,7 +191,8 @@ export default function Component() {
                             ...prev[userId]?.[round],
                             [timeSlot]: {
                                 input: input,
-                                total: undefined
+                                total: undefined,
+                                isEditable: false
                             },
                         },
                     },
@@ -189,6 +208,11 @@ export default function Component() {
     const getTimeTotal = (userId: string, round: number, timeSlot: "time1" | "time2" | "time3") => {
         return timeData[userId]?.[round]?.[timeSlot]?.total
     }
+
+    // const isCellEditable = (userId: string, round: number, timeSlot: "time1" | "time2" | "time3") => {
+    //     const cell = timeData[userId]?.[round]?.[timeSlot];
+    //     return !cell?.input || cell.isEditable;
+    // }
 
     const exportToCSV = () => {
         let csv = "User,"
@@ -240,47 +264,6 @@ export default function Component() {
             best: bestTime !== Number.POSITIVE_INFINITY ? bestTime.toFixed(2) : "N/A",
             total: timeCount,
         }
-    }
-
-    if (showResults) {
-        return (
-            <div className="min-h-screen">
-                <div className="max-w-md mx-auto">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-center">Shooting Results</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            {users.map((user) => {
-                                const stats = calculateUserStats(user)
-                                return (
-                                    <div key={user} className="p-4 bg-white rounded-lg border">
-                                        <h3 className="font-semibold text-lg mb-2">{user}</h3>
-                                        <div className="grid grid-cols-3 gap-4 text-sm">
-                                            <div className="text-center">
-                                                <div className="text-gray-500">Best Time</div>
-                                                <div className="font-semibold">{stats.best}s</div>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="text-gray-500">Average</div>
-                                                <div className="font-semibold">{stats.average}s</div>
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="text-gray-500">Total Shots</div>
-                                                <div className="font-semibold">{stats.total}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                            <Button onClick={() => setShowResults(false)} className="w-full" variant="outline">
-                                Back to Tracker
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-        )
     }
 
     return (
@@ -416,7 +399,7 @@ export default function Component() {
                 {/* Action Buttons */}
                 <div className="space-y-3">
                     {users.length > 0 && (
-                        <Button onClick={() => setShowResults(true)} className="w-full h-12 text-base" variant="default">
+                        <Button className="w-full h-12 text-base" variant="default">
                             <BarChart3 className="mr-2 h-5 w-5" />
                             Show Results
                         </Button>
