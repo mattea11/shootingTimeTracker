@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { ChevronLeft, ChevronRight, Plus, Download, BarChart3, Trash2, Edit, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -30,19 +30,42 @@ const password = import.meta.env.VITE_PASSWORD;
 export default function TimeTrackerTable() {
     const navigate = useNavigate()
 
-    const [currentRound, setCurrentRound] = useState(1)
-    const [users, setUsers] = useState<string[]>([])
+    // Initialize state with localStorage data
+    const [currentRound, setCurrentRound] = useState(() => {
+        const saved = localStorage.getItem("currentRound")
+        return saved ? parseInt(saved) : 1
+    })
+    const [users, setUsers] = useState<string[]>(() => {
+        const saved = localStorage.getItem("shootingUsers")
+        return saved ? JSON.parse(saved) : []
+    })
+    const [timeData, setTimeData] = useState<TimeData>(() => {
+        const saved = localStorage.getItem("shootingTimeData")
+        return saved ? JSON.parse(saved) : {}
+    })
+
     const [newUserName, setNewUserName] = useState("")
-    const [timeData, setTimeData] = useState<TimeData>({})
     const [activeInput, setActiveInput] = useState<{ userId: string, round: number, timeSlot: "time1" | "time2" | "time3" } | null>(null)
     const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
     const [passwordInput, setPasswordInput] = useState("")
     const [passwordError, setPasswordError] = useState(false)
     const [pendingEdit, setPendingEdit] = useState<{ userId: string, round: number, timeSlot: "time1" | "time2" | "time3" } | null>(null)
-    const [verifiedCells, _] = useState<{ [key: string]: boolean}>({})
     const [editingUser, setEditingUser] = useState<string | null>(null)
     const [editUserName, setEditUserName] = useState("")
     const [showUserDialog, setShowUserDialog] = useState(false)
+
+    // Save data to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem("shootingUsers", JSON.stringify(users))
+    }, [users])
+
+    useEffect(() => {
+        localStorage.setItem("shootingTimeData", JSON.stringify(timeData))
+    }, [timeData])
+
+    useEffect(() => {
+        localStorage.setItem("currentRound", currentRound.toString())
+    }, [currentRound])
 
     const addUser = () => {
         if (newUserName.trim()) {
@@ -244,15 +267,9 @@ export default function TimeTrackerTable() {
     }
 
     const handleShowResults = () => {
-        // Save data to localStorage
-        localStorage.setItem("shootingUsers", JSON.stringify(users))
-        localStorage.setItem("shootingTimeData", JSON.stringify(timeData))
-        
-        // Navigate to results page
         navigate("/shootingResults")
     }
 
-    // User management functions
     const handleUserClick = (username: string) => {
         setEditingUser(username)
         setEditUserName(username)
@@ -300,6 +317,19 @@ export default function TimeTrackerTable() {
         setEditUserName("")
     }
 
+    const clearAllData = () => {
+    if (confirm("Are you sure you want to clear all data? This cannot be undone.")) {
+        localStorage.removeItem("shootingUsers")
+        localStorage.removeItem("shootingTimeData")
+        localStorage.removeItem("currentRound")
+
+        setUsers([])
+        setTimeData({})
+        setCurrentRound(1)
+        setNewUserName("")
+    }
+}
+
     return (
         <div className="min-h-full pt-4">
             <div className="max-w-md mx-auto">
@@ -315,6 +345,7 @@ export default function TimeTrackerTable() {
                         <div className="space-y-4">
                             <Input
                                 type="password"
+                                id="passwordInput"
                                 placeholder="Password"
                                 value={passwordInput}
                                 onChange={(e) => setPasswordInput(e.target.value)}
@@ -354,13 +385,13 @@ export default function TimeTrackerTable() {
                         <DialogFooter className="flex gap-2">
                             
                             <Button variant="outline" onClick={closeUserDialog}>
-                                <X className="h-4 w-4" ></X>
+                                <X className="h-4 w-4"></X>
                                 Cancel
-                            </Button><Button variant="destructive" onClick={handleDeleteUser} className="flex items-center gap-2">
+                            </Button>
+                            <Button variant="destructive" onClick={handleDeleteUser} className="flex items-center gap-2">
                                 <Trash2 className="h-4 w-4" />
                                 Delete
                             </Button>
-                            
                             <Button onClick={handleRenameUser} disabled={!editUserName.trim()} className="flex items-center gap-2">
                                 <Edit className="h-4 w-4" />
                                 Save
@@ -411,60 +442,72 @@ export default function TimeTrackerTable() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {users.map((user) => (
-                                        <tr key={user} className="border-b">
+                                    {users.map((user, index) => (
+                                        <tr key={`${user}-${index}`} className="border-b">
                                             <td className="p-3">
                                                 <button
                                                     onClick={() => handleUserClick(user)}
-                                                    className="font-medium text-left hover:text-green-600 hover:font-bold transition-colors"
+                                                    className="font-medium text-left hover:text-green-700 hover:font-bold transition-colors"
+                                                    aria-label={`Edit shooter ${user}`}
                                                 >
                                                     {user}
                                                 </button>
                                             </td>
-                                            {(["time1", "time2", "time3"] as const).map((timeSlot) => (
-                                                <td key={timeSlot} className="p-2">
-                                                    <div className="flex flex-col items-center">
-                                                        <Input
-                                                            type="text"
-                                                            placeholder="0.00"
-                                                            className="text-center text-sm h-10"
-                                                            value={getTimeInput(user, currentRound, timeSlot)}
-                                                            onChange={(e) => handleInputChange(user, currentRound, timeSlot, e.target.value)}
-                                                            onFocus={() => handleInputFocus(user, currentRound, timeSlot)}
-                                                            onBlur={() => {
-                                                                calculateTotal(user, currentRound, timeSlot)
-                                                                setActiveInput(null)
-                                                            }}
-                                                            readOnly={!!(getTimeInput(user, currentRound, timeSlot) &&
-                                                                (!activeInput ||
-                                                                    activeInput.userId !== user ||
-                                                                    activeInput.round !== currentRound ||
-                                                                    activeInput.timeSlot !== timeSlot) &&
-                                                                !verifiedCells[`${user}-${currentRound}-${timeSlot}`])}
-                                                        />
-                                                        {activeInput?.userId !== user ||
-                                                            activeInput?.round !== currentRound ||
-                                                            activeInput?.timeSlot !== timeSlot ? (
-                                                            <div className="font-bold text-sm mt-1">
-                                                                {getTimeTotal(user, currentRound, timeSlot) || ""}
-                                                            </div>
-                                                        ) : null}
-                                                    </div>
-                                                </td>
-                                            ))}
+                                            {(["time1", "time2", "time3"] as const).map((timeSlot) => {
+                                                const inputId = `${user}-${currentRound}-${timeSlot}`
+                                                return (
+                                                    <td key={timeSlot} className="p-2">
+                                                        <div className="flex flex-col items-center">
+                                                            <Input
+                                                                id={inputId}
+                                                                type="text"
+                                                                placeholder="0.00"
+                                                                className="text-center text-sm h-10"
+                                                                value={getTimeInput(user, currentRound, timeSlot)}
+                                                                onChange={(e) => handleInputChange(user, currentRound, timeSlot, e.target.value)}
+                                                                onFocus={() => handleInputFocus(user, currentRound, timeSlot)}
+                                                                onBlur={() => {
+                                                                    calculateTotal(user, currentRound, timeSlot)
+                                                                    setActiveInput(null)
+                                                                }}
+                                                                readOnly={!!(getTimeInput(user, currentRound, timeSlot) &&
+                                                                    (!activeInput ||
+                                                                        activeInput.userId !== user ||
+                                                                        activeInput.round !== currentRound ||
+                                                                        activeInput.timeSlot !== timeSlot))}
+                                                                aria-label={`${user} round ${currentRound} ${timeSlot}`}
+                                                            />
+                                                            {activeInput?.userId !== user ||
+                                                                activeInput?.round !== currentRound ||
+                                                                activeInput?.timeSlot !== timeSlot ? (
+                                                                <div className="font-bold text-sm mt-1">
+                                                                    {getTimeTotal(user, currentRound, timeSlot) || ""}
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                    </td>
+                                                )
+                                            })}
                                         </tr>
                                     ))}
                                     <tr className="border-b bg-gray-50">
                                         <td colSpan={4} className="p-3">
                                             <div className="flex gap-2">
                                                 <Input
+                                                    id="newShooterName"
                                                     className="w-full text-sm"
                                                     placeholder="New shooter name"
                                                     value={newUserName}
                                                     onChange={(e) => setNewUserName(e.target.value)}
                                                     onKeyPress={(e) => e.key === "Enter" && addUser()}
+                                                    aria-label="New shooter name input"
                                                 />
-                                                <Button size="sm" onClick={addUser} disabled={!newUserName.trim()}>
+                                                <Button 
+                                                    size="sm" 
+                                                    onClick={addUser} 
+                                                    disabled={!newUserName.trim()}
+                                                    aria-label="Add new shooter"
+                                                >
                                                     <Plus className="h-4 w-4" />
                                                 </Button>
                                             </div>
@@ -479,17 +522,37 @@ export default function TimeTrackerTable() {
                 {/* Action Buttons */}
                 <div className="space-y-3">
                     {users.length > 0 && (
-                        <Button className="w-full h-12 text-base" variant="default" onClick={handleShowResults}>
+                        <>
+                        <Button 
+                            className="w-full h-12 text-base" 
+                            variant="default" 
+                            onClick={handleShowResults}
+                            aria-label="Show results"
+                        >
                             <BarChart3 className="mr-2 h-5 w-5" />
                             Show Results
                         </Button>
-                    )}
-
-                    {users.length > 0 && (
-                        <Button onClick={exportToCSV} className="w-full h-12 text-base" variant="outline">
+                        
+                        <Button 
+                            onClick={exportToCSV} 
+                            className="w-full h-12 text-base" 
+                            variant="outline"
+                            aria-label="Export to CSV"
+                        >
                             <Download className="mr-2 h-5 w-5" />
                             Export to CSV
                         </Button>
+
+                         <Button 
+                            onClick={clearAllData} 
+                            className="w-full h-12 text-base" 
+                            variant="destructive"
+                            aria-label="Clear all data"
+                        >
+                            <Trash2 className="mr-2 h-5 w-5" />
+                            Clear All Data
+                        </Button>
+                    </>
                     )}
                 </div>
             </div>
