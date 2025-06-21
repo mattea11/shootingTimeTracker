@@ -211,7 +211,7 @@ export default function ShootingResults() {
 
   const verifyPassword = () => {
     if (passwordInput === password) {
-      // exportToCSV()
+      exportToCSV()
       clearAllData()
       setPasswordDialogOpen(false)
       setPasswordInput("")
