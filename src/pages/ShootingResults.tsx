@@ -206,7 +206,7 @@ export default function ShootingResults() {
 
     setUsers([])
     setTimeData({})
-    navigate("/") // Optional: redirect back to main page
+    navigate("/")
   }
 
   const verifyPassword = () => {

@@ -133,7 +133,8 @@ export default function TimeTrackerTable() {
             isEditable: true
         };
 
-        if (currentCell.input && !currentCell.isEditable) {
+        // Check isEditable first
+        if (currentCell.isEditable === false) {
             setPendingEdit({ userId, round, timeSlot })
             setPasswordDialogOpen(true)
         } else {
@@ -443,7 +444,11 @@ export default function TimeTrackerTable() {
                             <Button
                                 variant="outline"
                                 size="icon"
-                                onClick={handleNextRound}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleNextRound();
+                                }}
                                 disabled={currentRound === 20}
                             >
                                 <ChevronRight className="h-4 w-4" />
