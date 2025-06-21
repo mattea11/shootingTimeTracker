@@ -91,6 +91,7 @@ export default function TimeTrackerTable() {
             newValue += '.'
         }
 
+        // Initialize with isEditable: true if the cell doesn't exist yet
         setTimeData((prev) => ({
             ...prev,
             [userId]: {
@@ -100,7 +101,7 @@ export default function TimeTrackerTable() {
                     [timeSlot]: {
                         input: newValue,
                         total: prev[userId]?.[round]?.[timeSlot]?.total,
-                        isEditable: false
+                        isEditable: prev[userId]?.[round]?.[timeSlot]?.isEditable ?? true
                     },
                 },
             },
@@ -108,6 +109,24 @@ export default function TimeTrackerTable() {
     }
 
     const handleInputFocus = (userId: string, round: number, timeSlot: "time1" | "time2" | "time3") => {
+        // Initialize the cell if it doesn't exist
+        if (!timeData[userId]?.[round]?.[timeSlot]) {
+            setTimeData(prev => ({
+                ...prev,
+                [userId]: {
+                    ...prev[userId] || {},
+                    [round]: {
+                        ...prev[userId]?.[round] || {},
+                        [timeSlot]: {
+                            input: "",
+                            total: undefined,
+                            isEditable: true
+                        }
+                    }
+                }
+            }))
+        }
+
         const currentCell = timeData[userId]?.[round]?.[timeSlot] || {
             input: "",
             total: undefined,
@@ -231,6 +250,44 @@ export default function TimeTrackerTable() {
         }
     }
 
+    const lockCurrentRoundCells = () => {
+        const newTimeData = { ...timeData };
+
+        users.forEach(user => {
+            if (!newTimeData[user]) {
+                newTimeData[user] = {};
+            }
+
+            if (!newTimeData[user][currentRound]) {
+                newTimeData[user][currentRound] = {
+                    time1: { input: "", total: undefined, isEditable: false },
+                    time2: { input: "", total: undefined, isEditable: false },
+                    time3: { input: "", total: undefined, isEditable: false }
+                };
+            } else {
+                // Set all time slots to not editable
+                (['time1', 'time2', 'time3'] as const).forEach(timeSlot => {
+                    if (newTimeData[user][currentRound][timeSlot]) {
+                        newTimeData[user][currentRound][timeSlot].isEditable = false;
+                    } else {
+                        newTimeData[user][currentRound][timeSlot] = {
+                            input: "",
+                            total: undefined,
+                            isEditable: false
+                        };
+                    }
+                });
+            }
+        });
+
+        setTimeData(newTimeData);
+    }
+
+    const handleNextRound = () => {
+        lockCurrentRoundCells();
+        setCurrentRound(Math.min(20, currentRound + 1));
+    }
+
     const getTimeInput = (userId: string, round: number, timeSlot: "time1" | "time2" | "time3") => {
         return timeData[userId]?.[round]?.[timeSlot]?.input || ""
     }
@@ -294,7 +351,16 @@ export default function TimeTrackerTable() {
         <div className="min-h-full pt-4">
             <div className="max-w-md mx-auto">
                 {/* Password Dialog */}
-                <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+                <Dialog
+                    open={passwordDialogOpen}
+                    onOpenChange={(open) => {
+                        setPasswordDialogOpen(open);
+                        if (!open) {
+                            setPasswordInput("");
+                            setPasswordError(false);
+                        }
+                    }}
+                >
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Password Required</DialogTitle>
@@ -320,7 +386,6 @@ export default function TimeTrackerTable() {
                         </div>
                     </DialogContent>
                 </Dialog>
-
                 {/* User Edit Dialog */}
                 <Dialog open={showUserDialog} onOpenChange={closeUserDialog}>
                     <DialogContent className="max-w-sm mx-auto">
@@ -378,7 +443,7 @@ export default function TimeTrackerTable() {
                             <Button
                                 variant="outline"
                                 size="icon"
-                                onClick={() => setCurrentRound(Math.min(20, currentRound + 1))}
+                                onClick={handleNextRound}
                                 disabled={currentRound === 20}
                             >
                                 <ChevronRight className="h-4 w-4" />

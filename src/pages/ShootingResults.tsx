@@ -211,7 +211,7 @@ export default function ShootingResults() {
 
   const verifyPassword = () => {
     if (passwordInput === password) {
-      exportToCSV()
+      // exportToCSV()
       clearAllData()
       setPasswordDialogOpen(false)
       setPasswordInput("")
@@ -299,12 +299,21 @@ export default function ShootingResults() {
         </Button>
       </div>
       {/* Password Dialog */}
-      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+      <Dialog
+        open={passwordDialogOpen}
+        onOpenChange={(open) => {
+          setPasswordDialogOpen(open);
+          if (!open) {
+            setPasswordInput("");
+            setPasswordError(false);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Enter password to export and clear all data</DialogTitle>
+            <DialogTitle>Password Required</DialogTitle>
             <DialogDescription>
-              Are you sure you want to clear all data? This cannot be undone.
+              Enter password to edit this field
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
